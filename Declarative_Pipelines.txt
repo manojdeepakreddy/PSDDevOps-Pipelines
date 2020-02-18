@@ -329,6 +329,81 @@ pipeline {
 
 ========================================================
 
+Parameter Example
+=================
+pipeline{
+    agent any
+    parameters{
+     string(name: 'TARGET_BRANCH', defaultValue: "Master", description: 'Enter default value')
+	 choice(name: 'Environment', choices: ['Dev', 'UAT', 'PROD'], description: 'Please select the Environment')
+	 booleanParam(name: 'Service', defaultValue: false, description: 'Please select the service')
+    }
+        stages
+        {
+            stage("Parameters")
+            {
+                
+                steps{
+
+                    sh label: '', script: 'echo "This is parameter stage "'
+                    echo "${params.TARGET_BRANCH}"
+					echo "${params.Environment}"
+					echo "${params.Service}"
+                
+                
+				}
+				}
+            }
+   }
 
 
+========================================================
+
+When with Tomcat and Maven
+===========================
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+    parameters{
+        string(name: 'TARGET_BRANCH', defaultValue: "master", description: 'Enter default value')
+        booleanParam(name: 'Service', defaultValue: false, description: 'Please select the service')
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git branch: '$TARGET_BRANCH', credentialsId: 'git_cred', url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				sh label: '', script: 'mvn clean package'
+				}
+			post { 
+        success{ 
+            junit testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: false
+          
+        }
+    }
+        }
+        stage("Deploy"){
+		when{
+		expression {params.TARGET_BRANCH == "master" && params.Service == true }
+		}
+			steps{
+	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@3.12.129.238:/opt/tomcat/webapps'
+			}
+		post{ 
+        failure{ 
+          mail to: 'psddevops1@gmail.com',
+          subject: "Status of pipeline: ${currentBuild.fullDisplayName}",
+          body: "${env.BUILD_URL} has result ${currentBuild.result}"
+          
+        }
+    }
+}
+}
+}
+
+=====================================================
 
