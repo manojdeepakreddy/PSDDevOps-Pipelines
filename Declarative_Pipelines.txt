@@ -1,0 +1,334 @@
+environment
+============
+
+pipeline {
+agent any
+environment {
+OUTPUT_PATH = './outputs/'
+}
+stages {
+stage ('build') {
+...
+}
+...
+}
+}
+
+
+pipeline {
+agent any
+stages {
+stage ('build') {
+environment {
+OUTPUT_PATH = './outputs/'
+}
+...
+}
+...
+}
+}
+
+=======================
+Input
+======
+
+pipeline {
+agent any
+stages {
+stage ('build') {
+input{
+message "Press Ok to continue"
+submitter "user1,user2"
+parameters {
+string(name:'username', defaultValue: 'user', description: 'Username of the user pressing Ok')
+}
+}
+steps { 
+echo "User: ${username} said Ok."
+}
+}
+}
+}
+
+============================
+Options
+=======
+
+pipeline {
+agent any
+options {
+retry(3)
+}
+stages {
+...
+}
+}
+
+=============================
+parallel
+=========
+
+
+stage('run-parallel-branches') {
+ steps {
+  parallel(
+   a: {
+    echo "Tests on Linux"
+   },
+   b: {
+    echo "Tests on Windows"
+   }
+  )
+ }
+}
+
+============================
+parameters
+==========
+
+pipeline {
+ agent any
+ parameters {
+  string(name: 'user', defaultValue: 'John', description: 'A user that triggers the pipeline')
+ }
+ stages {
+  stage('Trigger pipeline') {
+   steps {
+    echo "Pipeline triggered by ${params.USER}"
+   }
+  }
+ }
+}
+
+=================
+post
+====
+
+pipeline {
+ agent any
+ stages {
+  stage('Some steps') {
+   steps {
+    ...
+   }
+  }
+ }
+ post {
+  always {
+   echo“ Pipeline finished”
+   bat. / performCleanUp.bat
+  }
+ }
+}
+
+--------------
+
+pipeline {
+ agent any
+ stages {
+  stage('Test_Post') {
+   steps {
+    sh 'ls'
+   }
+  }
+ }
+ post {
+  always {
+   echo 'One way or another, I have finished'
+   deleteDir() /* clean up our workspace */
+  }
+  success {
+   echo 'I succeeeded!'
+  }
+  unstable {
+   echo 'I am unstable :/'
+  }
+  failure {
+   echo 'I failed :('
+  }
+  changed {
+   echo 'Things were different before...'
+  }
+ }
+}
+
+=========================
+
+tools
+=====
+
+pipeline {
+ agent any
+ tools {
+  maven 'apache-maven-3.0.1'
+ }
+ stages {
+  ...
+ }
+}
+
+===================
+
+triggers
+========
+
+pipeline {
+ agent any
+ triggers {
+  //Execute weekdays every four hours starting at minute 0
+  cron('0 */4 * * 1-5')
+ }
+ stages {
+  ...
+ }
+}
+pipeline {
+ agent any
+ triggers {
+  //Query repository weekdays every four hours starting at minute 0
+  pollSCM('0 */4 * * 1-5')
+ }
+ stages {
+  ...
+ }
+}
+pipeline {
+ agent any
+ triggers {
+  //Execute when either job1 or job2 are successful
+  upstream(upstreamProjects: 'job1, job2', threshold: hudson.model.Result.SUCCESS)
+ }
+ stages {
+  ...
+ }
+}
+
+=========================
+
+when
+=====
+
+pipeline {
+ agent any
+ stages {
+  stage('Deploy stage') {
+   when {
+    branch 'master'
+   }
+   steps {
+    echo 'Deploy master to stage'
+     ...
+   }
+  }
+ }
+}
+
+
+===================================
+
+GIT+MAVEN+POST(MAIL)
+====================
+
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				
+                sh label: '', script: 'mvn clean package'
+				
+            }
+        post { 
+        always { 
+          mail to: 'psddevops1@gmail.com',
+          subject: "Status of pipeline: ${currentBuild.fullDisplayName}",
+          body: "${env.BUILD_URL} has result ${currentBuild.result}"
+        }
+    }
+}
+
+======================================
+
+GIT+MAVEN+POST(Junit)
+=====================
+
+
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				
+                sh label: '', script: 'mvn clean package'
+				
+            }
+        post { 
+        success{ 
+            junit testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: false
+          
+        }
+    }
+}
+}
+}
+
+=========================================
+
+GIT+MAVEN+Tomcat+POST(Junit/Mail)
+=================================
+
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				sh label: '', script: 'mvn clean package'
+				}
+			post { 
+        success{ 
+            junit testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: false
+          
+        }
+    }
+        }
+        stage("Deploy"){
+			steps{
+	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@ec2-3-15-232-51.us-east-2.compute.amazonaws.com:/opt/tomcat/webapps'
+			}
+		post{ 
+        success{ 
+          mail to: 'psddevops1@gmail.com',
+          subject: "Status of pipeline: ${currentBuild.fullDisplayName}",
+          body: "${env.BUILD_URL} has result ${currentBuild.result}"
+          
+        }
+    }
+}
+}
+
+========================================================
+
+
+
+

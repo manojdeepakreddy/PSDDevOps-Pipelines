@@ -1,0 +1,115 @@
+Ex:1
+ node { // node/agent
+  stage('Stage 1') {
+    echo 'Hello World' // echo Hello World
+  }
+}
+
+===============
+Ex:2
+
+node {
+
+	stage('SCM'){
+	echo "This is SCM Checkout Stage ....."
+	}
+    stage('Build'){
+	echo "This is Build Stage ....."
+	}
+	stage('Test'){
+	echo "This is Test Stage ....."
+	}
+	stage('Analysis'){
+	echo "This is Analysis Stage ....."
+	}
+	stage('Deploy'){
+	echo "This is Deploy Stage ....."
+	}
+}
+================
+Ex:3
+
+node {
+
+	stage('Adding Numbers ..'){
+	add(10,20)
+	}
+    
+}
+def add(x,y){
+    z=x+y
+    echo "Sum of ${x} and ${y} is ${z}"
+}
+
+
+================
+Ex:4
+
+node {
+  stage('SampleTryCatch') {
+    try {
+      sh 'exit 1'
+    }
+    catch (exc) {
+      echo 'Something did not work and got some exceptions'
+      
+    }
+  }
+}
+
+=================
+Ex:5
+
+node{
+	stage('SCM Checkout'){
+	  	git credentialsId: 'psddevops', 
+			url: 'https://github.com/psddevops/sampletest.git',
+			branch: 'master'
+	}
+	
+	stage('maven build'){
+		def mvnHome = tool name: 'maven', type: 'maven'
+		sh "${mvnHome}/bin/mvn clean package"
+	}
+}
+
+=========================
+
+node {
+   
+   stage('SCM Checkout'){
+    // Clone repo
+	git branch: 'master', 
+	credentialsId: 'psddevops', 
+	url: 'https://github.com/psddevops/sampletest.git'
+   
+   }
+	
+   stage('Mvn Package'){
+	   // Build using maven
+	   def mvn = tool (name: 'maven3', type: 'maven') + '/bin/mvn'
+	   sh "${mvn} clean package"
+   }
+   
+   stage('deploy-dev'){
+       def tomcatDevIp = '18.191.190.105'
+	   def tomcatHome = '/opt/tomcat/'
+	   def webApps = tomcatHome+'webapps/'
+	   def tomcatStart = "${tomcatHome}bin/startup.sh"
+	   def tomcatStop = "${tomcatHome}bin/shutdown.sh"
+	   
+	   sshagent (credentials: ['tomcat-dev']) {
+	      sh "scp -o StrictHostKeyChecking=no $WORKSPACE/target/*.war ubuntu@${tomcatDevIp}:${webApps}psdapp.war"
+              sh "ssh ubuntu@${tomcatDevIp} ${tomcatStop}"
+	      sh "ssh ubuntu@${tomcatDevIp} ${tomcatStart}"
+       }
+   }
+   stage('Email Notification'){
+		mail bcc: '', body: '''Hi Team, You build successfully deployed ......
+
+Thanks,
+DevOps Team''', cc: '', from: '', replyTo: '', subject: 'Build Success', to: 'psddevops1@gmail.com'
+}
+}
+
+======================
