@@ -245,13 +245,27 @@ pipeline {
                 sh label: '', script: 'mvn clean package'
 				
             }
-        post { 
-        always { 
-          mail to: 'psddevops1@gmail.com',
-          subject: "Status of pipeline: ${currentBuild.fullDisplayName}",
-          body: "${env.BUILD_URL} has result ${currentBuild.result}"
+        post{
+        success{
+            mail body: """Hi Team, The app is successfully deployed
+            ${BUILD_URL}
+
+Thanks,
+PSD DevOps.
+""", subject: "${JOB_NAME} - Successfully Deployed", to: 'psddevops1@gmail.com'
+        }
+
+        failure{
+            mail body: """Hi Team, The app deployment failed
+            ${BUILD_URL}
+
+Thanks,
+PSD DevOps.
+""", subject: "${JOB_NAME} - Deployment failed", to: 'psddevops1@gmail.com'
         }
     }
+}
+}
 }
 
 ======================================
@@ -406,4 +420,175 @@ pipeline {
 }
 
 =====================================================
+
+GIT+Maven+Post(Slack)
+=====================
+
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				
+                sh label: '', script: 'mvn clean package'
+				
+            }
+        post{
+        success{
+           slackSend color: "#439FE0", message: "Job Success: ${JOB_NAME} and ${BUILD_URL}"
+        }
+		failure{
+           slackSend color: "#439FE0", message: "Job failure: ${JOB_NAME} and ${BUILD_URL}"
+        }
+
+        
+    }
+}
+}
+}
+
+=====================================================
+
+GIT+Maven+Tomcat+Post(Slack)
+============================
+
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				
+                sh label: '', script: 'mvn clean package'
+				
+            } }
+			
+		stage("Deploy"){
+			steps{
+	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@ec2-13-59-236-7.us-east-2.compute.amazonaws.com:/opt/tomcat/webapps'
+			}
+        post{
+        success{
+           slackSend color: "#439FE0", message: "Deployed Success: ${JOB_NAME} and ${BUILD_URL}"
+        }
+		failure{
+           slackSend color: "#439FE0", message: "Deployed failure: ${JOB_NAME} and ${BUILD_URL}"
+        }
+
+        
+    }
+
+}
+}
+}
+
+
+=====================================================
+
+CI-Declarative
+==============
+
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+	parameters{
+     string(name: 'TARGET_BRANCH', defaultValue: "master", description: 'Enter default value')
+	 choice(name: 'Environment', choices: ['Dev', 'UAT', 'PROD'], description: 'Please select the Environment')
+	 booleanParam(name: 'Service', defaultValue: false, description: 'Please select the service')
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				
+                sh label: '', script: 'mvn clean package'
+				
+            }
+        post{
+        success{
+           slackSend color: "#439FE0", message: "CI Success: ${JOB_NAME} and ${BUILD_URL}"
+        }
+		failure{
+           slackSend color: "#439FE0", message: "CI failure: ${JOB_NAME} and ${BUILD_URL}"
+        }
+
+        
+    }
+} 
+stage('Calling_CD'){
+    steps{
+       // build(job: "cd_declarative")
+	build(job: "cd_declarative", parameters: [string(name: 'ENVIRONMENT', value: "${params.ENVIRONMENT}"),
+    string(name: 'TARGET_BRANCH', value: "${params.TARGET_BRANCH}"),
+    string(name: 'Service', value: "${params.Service}")
+    ])
+    }
+    
+    }
+}
+}
+
+CD-Declarative
+==============
+
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+	parameters{
+     string(name: 'TARGET_BRANCH', defaultValue: "master", description: 'Enter default value')
+	 choice(name: 'Environment', choices: ['Dev', 'UAT', 'PROD'], description: 'Please select the Environment')
+	 booleanParam(name: 'Service', defaultValue: false, description: 'Please select the service')
+    }
+    stages {
+			
+		stage("Deploy"){
+		when{
+		expression {params.TARGET_BRANCH == "master" && params.Service == true }
+		}
+			steps{
+	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r /var/lib/jenkins/workspace/ci_declarative/target/psdapp.war ubuntu@ec2-13-59-236-7.us-east-2.compute.amazonaws.com:/opt/tomcat/webapps'
+			}
+        post{
+        success{
+           slackSend color: "#439FE0", message: "CD-Deployed Success: ${JOB_NAME} and ${BUILD_URL}"
+        }
+		failure{
+           slackSend color: "#439FE0", message: "CD-Deployed failure: ${JOB_NAME} and ${BUILD_URL}"
+        }
+
+        
+    }
+
+}
+}
+}
+
+Note
+====
+Passing Build parameter automatically
+
+*/2 * * * * % ENVIRONMENT=Dev;TARGET_BRANCH=master;Service=true
+
+
+============================================================
 
