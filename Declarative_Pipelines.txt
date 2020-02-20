@@ -592,3 +592,152 @@ Passing Build parameter automatically
 
 ============================================================
 
+SonarQube+Quality Gate
+======================
+
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				
+                sh label: '', script: 'mvn clean package'
+				
+            }
+            
+        }
+    stage('SonarQube') {
+   steps {
+    script {
+     
+      withSonarQubeEnv() {
+       sh "/opt/sonar-scanner/bin/sonar-scanner -Dsonar.language=java -Dsonar.projectName=citi -Dsonar.sourceEncoding=UTF-8 -Dsonar.projectKey=citi -Dsonar.projectVersion=${BUILD_TAG} -Dsonar.java.binaries=${WORKSPACE}/target/classes -Dsonar.sources=${WORKSPACE} -Dsonar.projectBaseDir=${WORKSPACE} -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/target/site/jacoco/jacoco.xml -Dsonar.junit.reportPaths=${WORKSPACE}/target/surefire-reports/*.xml"
+      }
+     }
+    }
+	}
+	stage("Sonar_Quality_Gate"){
+	steps{
+	script{
+	timeout(time: 5, unit: 'MINUTES') {
+	def qg = waitForQualityGate()
+	catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE'){
+	if (qg.status != 'OK') {
+	error "Stage aborted due to quality gate failure: ${qg.status}"
+	
+	}
+	}
+	}
+	}
+	}
+	post {
+    success {
+		  sh label: '', script: 'echo " ${STAGE_NAME} is Passed"'
+    }
+	failure {
+		  sh label: '', script: 'echo " ${STAGE_NAME} is Failed"'
+		  mail body: """Hi Team, The app deployment failed
+            ${BUILD_URL}
+
+Thanks,
+PSD DevOps.
+""", subject: "${JOB_NAME} - Quality Gate failed", to: 'psddevops1@gmail.com'
+		  
+    }
+	}
+}
+stage("Deploy"){
+			steps{
+	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@ec2-13-58-213-27.us-east-2.compute.amazonaws.com:/opt/tomcat/webapps'
+			}
+	}
+   }
+        
+    }
+    
+============================================================
+
+GIT+MAVEN+SonarQube+Quality Gate+Nexus
+======================================
+
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				
+                sh label: '', script: 'mvn clean package'
+				
+            }
+            
+        }
+    stage('SonarQube') {
+   steps {
+    script {
+     
+      withSonarQubeEnv() {
+       sh "/opt/sonar-scanner/bin/sonar-scanner -Dsonar.language=java -Dsonar.projectName=citi -Dsonar.sourceEncoding=UTF-8 -Dsonar.projectKey=citi -Dsonar.projectVersion=${BUILD_TAG} -Dsonar.java.binaries=${WORKSPACE}/target/classes -Dsonar.sources=${WORKSPACE} -Dsonar.projectBaseDir=${WORKSPACE} -Dsonar.coverage.jacoco.xmlReportPaths=${WORKSPACE}/target/site/jacoco/jacoco.xml -Dsonar.junit.reportPaths=${WORKSPACE}/target/surefire-reports/*.xml"
+      }
+     }
+    }
+	}
+	stage("Sonar_Quality_Gate"){
+	steps{
+	script{
+	timeout(time: 5, unit: 'MINUTES') {
+	def qg = waitForQualityGate()
+	catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE'){
+	if (qg.status != 'OK') {
+	error "Stage aborted due to quality gate failure: ${qg.status}"
+	
+	}
+	}
+	}
+	}
+	}
+	post {
+    success {
+		  sh label: '', script: 'echo " ${STAGE_NAME} is Passed"'
+    }
+	failure {
+		  sh label: '', script: 'echo " ${STAGE_NAME} is Failed"'
+		  mail body: """Hi Team, The app deployment failed
+            ${BUILD_URL}
+
+Thanks,
+PSD DevOps.
+""", subject: "${JOB_NAME} - Quality Gate failed", to: 'psddevops1@gmail.com'
+		  
+    }
+	}
+}
+stage('Publish') {
+    steps{
+   //nexusPublisher nexusInstanceId: 'nexus3', nexusRepositoryId: 'citi-releases', packages: [[$class: 'MavenPackage', mavenAssetList: [[classifier: '', extension: '', filePath: '$WORKSPACE/target/psdapp.war']], mavenCoordinate: [artifactId: 'citi', groupId: 'com.citi', packaging: 'war', version: '1.0']]]
+   nexusPublisher nexusInstanceId: 'nexus3', nexusRepositoryId: 'citi-releases', packages: [[$class: 'MavenPackage', mavenAssetList: [[classifier: '', extension: '', filePath: '/var/lib/jenkins/workspace/sonar_test_declarative/target/psdapp.war']], mavenCoordinate: [artifactId: 'psdapp', groupId: 'com.citi', packaging: 'war', version: '$BUILD_NUMBER']]]
+   } }
+stage("Deploy"){
+			steps{
+	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@ec2-13-58-213-27.us-east-2.compute.amazonaws.com:/opt/tomcat/webapps'
+			}
+	}
+   }
+        
+    }
+    
+
+
