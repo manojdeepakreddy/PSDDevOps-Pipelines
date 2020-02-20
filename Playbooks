@@ -1,0 +1,534 @@
+Sample Playbook
+===============
+Write Playbook with variables
+---
+- name: This is play-1
+  hosts: webservers
+  vars:
+    my_content: "This file created using vars concept placing webservers......................../n"
+  tasks:
+    - name: Adding the variable value
+      copy:
+        dest: /tmp/var_file_web.txt
+        content: "{{ my_content }}"
+
+- name: This is play-2
+  hosts: appservers
+  vars:
+    my_content: "This file created using vars concept placing appservers ............................/n"
+  tasks:
+    - name: Adding the variable value
+      copy:
+        dest: /tmp/var_file_app.txt
+        content: "{{ my_content }}"
+
+===================================================================================================================
+Reading and printing variable value from command line
+
+---
+ - name: This is for prompting variables
+   hosts: all
+   vars_prompt:
+     name: varl
+     prompt: Enter any value ?
+   tasks:
+     - name: This is used to print a variable value
+       debug:
+         msg: "The value of your variable is: {{ varl }}"
+         
+         
+===================================================================================================================
+
+---
+ - name: This is for prompting variables
+   hosts: all
+   vars_prompt:
+     - name: "username"
+       prompt: "Please enter the username ?"
+       private: no
+
+     - name: "password"
+       prompt: "Please enter the password ?"
+       private: yes
+
+   tasks:
+     - name: username && password is
+       debug:
+         msg: "The value of Username and Password variable is: {{ username }} and {{ password }}"
+
+===================================================================================================================
+
+Command line variables
+======================
+
+- name: This is a play
+  hosts: all
+  tasks:
+    - name: Printing/Reading the values from prompt
+      debug:
+        msg: The value of var1= {{var1}} and var2={{var2}}"
+        
+Command: 
+ansible-playbook first.yml --extra-vars "var1=devops var2=aws"
+ansible-playbook first.yml -e "var1=devops var2=aws"
+        
+===================================================================================================================
+From different file
+===================
+- hosts: all
+  vars_files:
+    - "./vars.yml"
+  tasks:
+    - name: Adding the variable value
+      copy:
+        dest: /tmp/files.txt
+        content: "{{ my_content }}"
+        
+vars.yml
+========
+my_content: "This file created using var concept"
+
+===================================================================================================================
+
+Run a Task with sudo – Ansible become --- Host level
+====================================================
+
+
+---
+  - name: Playbook
+    hosts: all
+    become: yes
+    tasks:
+      - name: ensure apache is at the latest version
+        yum:
+          name: httpd
+          state: latest
+      - name: ensure apache is running
+        service:
+          name: httpd
+          state: started
+
+===================================================================================================================
+
+Ansible Become User --Task level
+================================
+
+---
+  - name: Playbook
+    hosts: webservers
+    tasks:
+      - name: ensure apache is at the latest version
+        yum:
+          name: httpd
+          state: latest
+        become: yes
+        become_user: root
+        
+      - name: ensure apache is running
+        service:
+          name: httpd
+          state: restarted
+        become: yes
+        become_user: root
+
+
+===================================================================================================================
+
+Ansible dry run/check mode
+==========================
+
+---
+  - name: Playbook
+    hosts: all
+    become: yes
+    tasks:
+      - name: ensure apache is at the latest version
+        yum:
+          name: httpd
+          state: latest
+      - name: ensure apache is running
+        service:
+          name: httpd
+          state: started
+
+Command
+=======
+ansible-playbook first.yml -C
+        OR
+ansible-playbook first.yml --check
+===================================================================================================================
+Printing Variable Value
+========================
+
+- hosts: localhost
+  vars:
+    my_content: "This file created using var concept"
+  tasks:
+    - name: Printing the variable vaalue
+      debug:
+        var: my_content
+
+
+===================================================================================================================
+Printing Variable Value with Adding Some Extra Message
+======================================================
+
+
+- hosts: localhost
+  vars:
+    my_content: "This file created using var concept"
+  tasks:
+    - name: Printing the variable vaalue
+      debug:
+        var: my_content
+
+===================================================================================================================
+Ansible Debug Msg with Examples
+===============================
+---
+- hosts: localhost
+  gather_facts: yes
+  
+  tasks:
+ 
+  - name: executing sample command
+    shell: echo "PSD DevOps"
+    register: data
+ 
+  - name: printing variable
+    debug:
+      var: data
+ 
+  - name: printing variable with stdout
+    debug:
+      var: data.stdout
+
+
+===================================================================================================================
+Ansible register module with an example
+=======================================
+
+---
+- hosts: webservers
+  gather_facts: no
+  become: yes
+  tasks:
+  - name: starting httpd
+    service: name=httpd state=started enabled=yes
+
+  - name: httpd status
+    command: service httpd status
+    register: httpd_status
+
+  - name: httpd status output
+    debug:
+      var: httpd_status
+
+
+===================================================================================================================
+
+Ansible register module stdout_lines
+====================================
+
+---
+- hosts: webservers
+  gather_facts: no
+  become: yes
+  tasks:
+  - name: starting httpd
+    service: name=httpd state=started enabled=yes
+
+  - name: httpd status
+    command: service httpd status
+    register: httpd_status
+
+  - name: httpd status output
+    debug:
+      var: httpd_status.stdout_lines
+
+===================================================================================================================
+delegate module demo
+====================
+
+- name: delegate module demo
+  hosts: webservers
+  vars:
+    my_content: "sample_test ...."
+  tasks:
+    - name: Adding the variable value
+      copy:
+        dest: /tmp/delegate.txt
+        content: "{{ my_content }}"
+      delegate_to: s2
+
+
+===================================================================================================================
+delegate module demo on localhost
+=================================
+
+- name: delegate module demo
+  hosts: webservers
+  vars:
+    my_content: "sample_test"
+  tasks:
+    - name: Adding the variable value
+      copy:
+        dest: /tmp/delegate.txt
+        content: "{{ my_content }}"
+      delegate_to: localhost
+      
+===================================================================================================================
+
+run_once module demo
+====================
+
+- name: run_once module demo
+  hosts: webservers
+  vars:
+    my_content: "sample_test “
+  tasks:
+    - name: Adding the variable value
+      copy:
+        dest: /tmp/runonce.txt
+        content: "{{ my_content }}"
+      run_once: true 
+
+===================================================================================================================
+Installing multiple softwares
+=============================
+
+- hosts: all
+  become: yes
+  tasks:
+    - name: Install yum package in Ansible example
+      yum:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - git
+        - httpd
+        - mutt
+
+
+===================================================================================================================
+Updatting all pkgs
+==================
+
+- hosts: all
+  become: yes
+  tasks:
+  - name: Install yum package in Ansible example
+    yum:
+      name: "*"
+      state: latest
+
+
+===================================================================================================================
+Excluding specific pkgs
+=======================
+
+- hosts: all
+  become: yes
+  tasks:
+  - name: Install yum package in Ansible example
+    yum:
+      name: "*"
+      state: latest
+      exclude: httpd*
+
+  - name: install the nginx rpm from a remote repo
+    yum:
+      name: http://nginx.org/packages/centos/6/noarch/RPMS/nginx-release-centos-6-0.el6.ngx.noarch.rpm
+      state: present
+
+===================================================================================================================
+service
+=======
+- hosts: all
+  become: yes
+  tasks:
+    - name: Make sure a httpd service is running
+      service: 
+        name=httpd 
+        state=stopped
+
+systemd
+=======        
+ - hosts: all
+  become: yes
+  tasks:
+    - name: Make sure a httpd service is running
+      systemd: 
+        name=httpd 
+        state=stopped
+
+===================================================================================================================
+- hosts: localhost
+  tasks:
+    - name: Ansible loop with index example
+      debug:
+        msg: "echo loop index at {{ item.0 }} and value at {{item.1}}"
+      with_indexed_items:
+        - "hello1"
+        - "hello2"
+        - "hello3"
+
+- hosts: localhost
+  tasks:
+    - name: Ansible loop with index example
+      debug:
+        msg: "echo loop index at {{ item.0 +1}} and value at {{item.1}}"
+      with_indexed_items:
+        - "hello1"
+        - "hello2"
+        - "hello3"
+
+
+- hosts: localhost
+  vars:
+    States:
+      AP: 'Visakhapatnam'
+      TS: 'Hyderabad'
+      KTK: 'Bangalore'
+      TN: 'Chennai'
+  tasks:
+    - name: Ansible dictionary loop Example
+      debug:
+        msg: "State is {{ item.key}} and Capital is {{item.value}}"
+      with_dict: "{{ States }}"
+      
+      
+ - hosts: localhost
+  tasks:
+    - name: with_list
+      debug:
+        msg: "{{ item }}"
+      with_list:
+        - one
+        - two
+
+    - name: with_list -> loop
+      debug:
+        msg: "{{ item }}"
+      loop:
+        - one
+        - two
+
+===================================================================================================================
+When conditions
+===============
+---
+- hosts: all
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: verify httpd version
+      command: /usr/sbin/httpd -v
+      register: version
+      ignore_errors: True
+
+    - name: print httpd version
+      debug:
+        msg: "{{ version }}"
+      when: "version.rc == 0"
+
+    - name: install httpd
+      yum: name=httpd state=present
+      register: version1
+      when: "version.rc != 0 "
+    - name: install httpd version
+      debug:
+        msg: "{{ version1 }}"
+
+
+
+---
+- hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Ansible check file exists
+      stat:
+        path: /tmp/devopsaws.txt
+      register: result
+
+    - name: Ansible check file exists example.
+      command: cp /tmp/devopsaws.txt /tmp/devopsaws_12032020.txt
+      when: result.stat.exists
+
+    - name: Ansible create the file
+      command: touch /tmp/devopsaws.txt
+      when: result.stat.exists == false
+      
+
+
+---
+ - name: Find files - Playbook
+   hosts: localhost
+   tasks:
+
+   # Case1:  when Search String and Modified time is mentioned
+     - name:  Find command with *SEARCH STRING* and *MODIFIED TIME*
+       shell: "find {{Directory}} -name '{{SearchString}}' -mtime '{{mtime}}'"
+       register: case1output
+       when: Directory is defined and SearchString is defined and mtime is defined
+       ignore_errors: true
+
+   # Case2: when Only Search String is mentioend but NOT Modified time(age)
+     - name:  Find command with only with *SEARCH STRING*
+       shell: "find {{Directory}} -name '{{SearchString}}' "
+       register: case2output
+       when: Directory is defined and SearchString is defined and mtime is not defined
+       ignore_errors: true
+
+   # In case of Case1 Success
+     - name: Case1 Output -- Output will be displayed only if Case is Success (or) it will be skipped
+       debug: var=case1output.stdout_lines
+       when: case1output.stdout_lines is defined
+
+   # In case of Case2 Success
+     - name: Case2 Output -- Output will be displayed only if Case is Success (or) it will be skipped
+       debug: var=case2output.stdout_lines
+       when: case2output.stdout_lines is defined
+
+
+
+
+Command:
+=======
+ansible-playbook test.yml -e "Directory=/home/ansadmin/myansible/testdir SearchString=*.txt mtime=30"
+ansible-playbook test.yml -e "Directory=/home/ansadmin/myansible/testdir SearchString=*.txt"
+    
+      
+===================================================================================================================
+wait_for module
+===============
+
+---
+- name: A Playbook to test Async and Poll
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Install httpd
+      yum:
+        name: httpd
+        state: present
+
+    - name: wait for the service
+      wait_for:
+        timeout: 60
+
+    - name: start the service
+      service:
+        name: httpd
+        state: started
+
+
+===================================================================================================================
+===================================================================================================================
+===================================================================================================================
+===================================================================================================================
+===================================================================================================================
+===================================================================================================================
+===================================================================================================================
+===================================================================================================================
