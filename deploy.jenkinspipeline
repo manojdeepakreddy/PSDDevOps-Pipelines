@@ -1,0 +1,35 @@
+pipeline {
+    agent any
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				sh label: '', script: 'mvn clean package'
+				}
+			post { 
+        success{ 
+            junit testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: false
+          
+        }
+    }
+        }
+        stage("Deploy"){
+			steps{
+	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@ec2-3-15-232-51.us-east-2.compute.amazonaws.com:/opt/tomcat/webapps'
+			}
+		post{ 
+        success{ 
+          mail to: 'psddevops1@gmail.com',
+          subject: "Status of pipeline: ${currentBuild.fullDisplayName}",
+          body: "${env.BUILD_URL} has result ${currentBuild.result}"
+          
+        }
+    }
+}
+}
