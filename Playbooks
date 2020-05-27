@@ -313,6 +313,23 @@ run_once module demo
       run_once: true 
 
 ===================================================================================================================
+Installing/Uninstalling/Updating packages
+========================================
+
+- hosts: all
+  become: yes  
+  tasks:  
+  - name: Install yum package in Ansible example  
+    yum:  
+      name: git  
+      state: present/absent/latest
+  - name: Install yum package in Ansible example  
+    yum:  
+      name: tree 
+      state: present/absent/latest
+
+
+
 Installing multiple softwares
 =============================
 
