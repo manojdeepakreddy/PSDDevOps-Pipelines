@@ -1161,6 +1161,115 @@ case $1 in
 esac
 exit 0
 
+
+Updated code
+============
+
+---
+- name: Playbook to download and install tomcat8
+  hosts: all
+  become: yes
+  vars:
+    username: psddevops
+    token: ec9d052e859cd397ec6dc1d47da4381d3f4b2ca0
+    repo_name: sampletest
+
+  tasks:
+    - name: install Git
+      become: yes
+      yum:
+        name: git
+        state: present
+      register: git_output
+    - debug:
+        var: git_output
+
+    - name: Checkout The Code From Github Using Ansible.
+      git:
+        repo: 'https://{{ token }}@github.com/{{ username }}/{{ repo_name }}.git'
+        dest: /home/ansadmin/psddevops
+      register: git_checkout
+    - debug:
+        var: git_checkout
+
+    - name: download and install java rpm
+      yum:
+        name: https://corretto.aws/downloads/latest/amazon-corretto-8-x64-linux-jdk.rpm
+        state: present
+      register: java_output
+    - debug:
+        var: java_output
+
+    - name: crate a directory
+      become: yes
+      file:
+        path: "/opt/tomcat8"
+        state: directory
+        mode: 0777
+
+    - name: Download and install tomcat
+      unarchive:
+        src: "https://downloads.apache.org/tomcat/tomcat-8/v8.5.55/bin/apache-tomcat-8.5.55.tar.gz"
+        dest: "/opt/tomcat8/"
+        mode: 0777
+        remote_src: yes
+      register: tcinstall
+    - debug:
+        var: tcinstall
+
+    - name: Download and install maven
+      unarchive:
+        src: "https://downloads.apache.org/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz"
+        dest: "/opt/"
+        mode: 0755
+        remote_src: yes
+      register: maveninstall
+    - debug:
+        var: maveninstall
+
+    - name: maven configuration and compilateion
+      shell: |
+        echo -e "\n rename the maven"
+        cd /opt
+        mv apache-maven-3.6.3 maven
+        echo -e "\n setting the path for maven"
+        PATH=$PATH:/opt/maven/bin:/usr/lib/jvm/java-1.8.0-amazon-corretto/bin
+        export PATH
+        cd /home/ansadmin/psddevops
+        mvn clean package
+        cp ./target/psdapp.war /opt/tomcat8/apache-tomcat-8.5.55/webapps/
+
+    - name: crete group "tomcat"
+      group:
+        name: tomcat
+        state: present
+      ignore_errors: true
+
+    - name: Add the user 'tomcat'
+      user:
+        name: tomcat
+        group: tomcat
+      ignore_errors: true
+
+    - name: create a link
+      file:
+        src:  /opt/tomcat8/apache-tomcat-8.5.55
+        dest: /usr/share/tomcat8
+        state: link
+        force: yes
+
+    - name: Change ownership of Tomcat installation
+      file: path=/usr/share/tomcat8/ owner=tomcat group=tomcat state=directory recurse=yes
+
+    - name: Configure Tomcat as a service
+      copy: src=tomcat-initscript.sh dest=/etc/init.d/tomcat mode=0777
+
+    - name: Start the tomcat
+      service:
+        name: tomcat
+        state: started
+        enabled: yes
+
 ===================================================================================================================
 Copy module demo
 ================
