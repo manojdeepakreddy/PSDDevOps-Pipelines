@@ -21,7 +21,7 @@ pipeline {
         }
         stage("Deploy"){
 			steps{
-	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@ec2-3-15-232-51.us-east-2.compute.amazonaws.com:/opt/tomcat/webapps'
+	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@3.134.114.41:/opt/tomcat/webapps'
 			}
 		post{ 
         success{ 
