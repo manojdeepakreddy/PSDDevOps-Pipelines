@@ -221,8 +221,67 @@ Ansible Debug Msg with Examples
   - name: printing variable with stdout
     debug:
       var: data.stdout
+      
+      
+Ansible Debug Msg with Examples
+===============================
+---
+- hosts: localhost
+  gather_facts: yes
+  
+  tasks:
+ 
+  - name: executing sample command
+    shell: echo "PSD DevOps"
+    register: data
+ 
+  - name: printing variable
+    debug:
+      var: data
+ 
+  - name: printing variable with stdout
+    debug:
+      var: data.stdout
 
+  - name: printing variable with cmd
+    debug:
+      var: data.cmd
+ 
+  - name: printing variable with changed
+    debug:
+      var: data.changed
 
+  - name: printing variable with delta
+    debug:
+      var: data.delta
+ 
+  - name: printing variable with end
+    debug:
+      var: data.end
+
+  - name: printing variable with failed
+    debug:
+      var: data.failed
+      
+  - name: printing variable with rc
+    debug:
+      var: data.rc
+ 
+  - name: printing variable with start
+    debug:
+      var: data.start
+
+  - name: printing variable with stderr
+    debug:
+      var: data.stderr
+      
+  - name: printing variable with stderr_lines
+    debug:
+      var: data.stderr_lines
+ 
+  - name: printing variable with stdout_lines
+    debug:
+      var: data.stdout_lines
 ===================================================================================================================
 Ansible register module with an example
 =======================================
