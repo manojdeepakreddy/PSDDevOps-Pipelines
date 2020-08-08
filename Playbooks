@@ -192,14 +192,14 @@ Printing Variable Value
 Printing Variable Value with Adding Some Extra Message
 ======================================================
 
-
 - hosts: localhost
   vars:
     my_content: "This file created using var concept"
   tasks:
     - name: Printing the variable vaalue
       debug:
-        var: my_content
+        msg: "this is sample {{  my_content }}"
+
 
 ===================================================================================================================
 Ansible Debug Msg with Examples
