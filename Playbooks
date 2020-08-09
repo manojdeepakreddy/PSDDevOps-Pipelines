@@ -442,10 +442,10 @@ service
 - hosts: all
   become: yes
   tasks:
-    - name: Make sure a httpd service is running
+    - name: Make sure a httpd is installed
       service: 
         name=httpd 
-        state=stopped
+        state=started
 
 systemd
 =======        
