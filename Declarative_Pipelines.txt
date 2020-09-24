@@ -742,5 +742,102 @@ stage("Deploy"){
         
     }
     
+====================================================
 
+
+CI_JOB
+======
+pipeline {
+    agent { label 'Slave-1' }
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+	parameters{
+     string(name: 'TARGET_BRANCH', defaultValue: "master", description: 'Enter default value')
+	 choice(name: 'Environment', choices: ['Dev', 'UAT', 'PROD'], description: 'Please select the Environment')
+	 booleanParam(name: 'Deploy', defaultValue: false, description: 'Deploy the applications into the webserver')
+	 booleanParam(name: 'Service', defaultValue: false, description: 'Please select the service')
+	 
+    }
+    stages {
+        stage('GIT Checkout'){
+            steps{
+                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+            }}
+        stage('Maven Build'){
+            steps{
+				
+                sh label: '', script: 'mvn clean package'
+				
+            }
+       // post{
+       // success{
+        //   slackSend color: "#439FE0", message: "CI Success: ${JOB_NAME} and ${BUILD_URL}"
+       // }
+		//failure{
+         //  slackSend color: "#439FE0", message: "CI failure: ${JOB_NAME} and ${BUILD_URL}"
+        //}
+
+        
+    //}
+}
+}
+post {
+  success {
+   script {
+    if (params.Deploy == true) {
+    sh label: '', script: 'echo "Entering to to the deployment stage"'
+	build(job: "job-2", parameters: [string(name: 'ENVIRONMENT', value: "${params.ENVIRONMENT}"),
+    string(name: 'TARGET_BRANCH', value: "${params.TARGET_BRANCH}"),
+    string(name: 'Service', value: "${params.Service}")
+    ])
+			}
+		}
+	}
+}
+
+}
+
+====================================================
+
+CD-JOB
+======
+
+pipeline {
+    agent { label 'Slave-1' }
+    environment{
+        PATH="/opt/maven/bin:$PATH"
+    }
+	parameters{
+     string(name: 'TARGET_BRANCH', defaultValue: '',, description: 'Enter default value')
+	 string(name: 'Environment', defaultValue: '',, description: 'Please select the Environment')
+	 string(name: 'Service', defaultValue: '', description: 'Please select the service')
+    }
+    stages {
+			
+		stage("Deploy"){
+		when{
+		expression {params.TARGET_BRANCH == "master" && params.Service == "true" }
+		}
+			steps{ 
+			    //sh label: '', script: 'scp -o StrictHostKeyChecking=no -r /var/lib/jenkins/workspace/job-1/target/*.war ubuntu@ec2-13-59-39-209.us-east-2.compute.amazonaws.com:/opt/tomcat/webapps'
+			    sh label: '', script: 'scp -o StrictHostKeyChecking=no -r /home/jenkins/workspace/job-1/target/*.war ubuntu@ec2-13-59-39-209.us-east-2.compute.amazonaws.com:/opt/tomcat/webapps'
+			    sh label: '', script: 'ssh ubuntu@ec2-13-59-39-209.us-east-2.compute.amazonaws.com /opt/tomcat/bin/shutdown.sh'
+	            
+	            sh label: '', script: 'ssh ubuntu@ec2-13-59-39-209.us-east-2.compute.amazonaws.com /opt/tomcat/bin/startup.sh'
+			}
+        //post{
+        //success{
+        //   slackSend color: "#439FE0", message: "CD-Deployed Success: ${JOB_NAME} and ${BUILD_URL}"
+       // }
+		//failure{
+      //     slackSend color: "#439FE0", message: "CD-Deployed failure: ${JOB_NAME} and ${BUILD_URL}"
+     //   }
+
+        
+    //}
+
+}
+}
+}
 
