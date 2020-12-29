@@ -6,7 +6,7 @@ pipeline {
     stages {
         stage('GIT Checkout'){
             steps{
-                git changelog: false, credentialsId: 'git_cred', poll: false, url: 'https://github.com/psddevops/sampletest.git'
+                git changelog: false, credentialsId: 'github_credentials', poll: false, url: 'https://github.com/psddevops/sampletest.git'
             }}
         stage('Maven Build'){
             steps{
@@ -21,7 +21,7 @@ pipeline {
         }
         stage("Deploy"){
 			steps{
-	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@3.134.114.41:/opt/tomcat/webapps'
+	            sh label: '', script: 'scp -o StrictHostKeyChecking=no -r $WORKSPACE/target/*.war ubuntu@ip-172-31-42-170:/opt/tomcat/webapps'
 			}
 		post{ 
         success{ 
